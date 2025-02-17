@@ -7,8 +7,11 @@ export const searchQuery = async (query: string, signal?: AbortSignal) => {
     try {
         const response = await axios.post(API_URL, { query }, {
             signal,
-            timeout: REQUEST_TIMEOUT,
-            headers: { 'Content-Type': 'application/json' }
+            timeout: 8000,
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
         });
         return response.data;
     } catch (error) {

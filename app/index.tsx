@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
 import {
   View,
   Text,
@@ -8,46 +14,43 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   Keyboard,
+  Modal,
 } from "react-native";
 import { searchQuery } from "./api";
 import * as Haptics from "expo-haptics";
 import * as Clipboard from "expo-clipboard";
 import { useFonts, SpaceMono_400Regular } from "@expo-google-fonts/space-mono";
+import * as WebBrowser from "expo-web-browser";
+import Markdown from "react-native-markdown-display";
+import { useAnimatedReaction, runOnJS } from "react-native-reanimated";
 
 export default function App() {
   const [query, setQuery] = useState("");
   const [answer, setAnswer] = useState("");
-  const [displayAnswer, setDisplayAnswer] = useState("");
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState<string[]>([]);
+  const [previewVisible, setPreviewVisible] = useState(false);
+  const [previewContent, setPreviewContent] = useState("");
   const abortController = useRef(new AbortController());
+  const cache = useRef(new Map());
 
-  useEffect(() => {
-    if (answer.length > 0) {
-      let index = 0;
-      const typingInterval = setInterval(() => {
-        setDisplayAnswer((prev) => prev + answer.charAt(index));
-        index++;
-        if (index === answer.length) {
-          clearInterval(typingInterval);
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        }
-      }, 30);
-      return () => clearInterval(typingInterval);
+  const handleSearch = useCallback(async () => {
+    if (cache.current.has(query)) {
+      setAnswer(cache.current.get(query).answer);
+      setResults(cache.current.get(query).search_results);
+      return;
     }
-  }, [answer]);
 
-  const handleSearch = async () => {
     try {
       Keyboard.dismiss();
       abortController.current = new AbortController();
       setLoading(true);
-      setDisplayAnswer("");
       const response = await searchQuery(query, abortController.current.signal);
       setAnswer(response.answer);
       setResults(response.search_results);
       setHistory((prev) => [query, ...prev.slice(0, 4)]);
+      cache.current.set(query, response);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     } catch (error) {
       setAnswer("> ERROR: CONNECTION TERMINATED\n> REBOOT SEQUENCE INITIATED");
@@ -55,6 +58,28 @@ export default function App() {
     } finally {
       setLoading(false);
     }
+  }, [query]);
+
+  const RenderMarkdown = useMemo(
+    () => (
+      <Markdown
+        style={{
+          body: styles.answer,
+          code_inline: { color: "#00ff88", backgroundColor: "#002200" },
+          link: { color: "#00ffff" },
+          paragraph: { marginBottom: 16 },
+        }}
+        onPressLink={(url) => WebBrowser.openBrowserAsync(url)}
+      >
+        {answer}
+      </Markdown>
+    ),
+    [answer]
+  );
+
+  const handleLongPress = (url: string) => {
+    setPreviewContent(url);
+    setPreviewVisible(true);
   };
 
   return (
@@ -74,34 +99,51 @@ export default function App() {
         returnKeyType="search"
       />
 
-      {history.length > 0 && (
-        <View style={styles.historyContainer}>
-          {history.map((item, index) => (
-            <Text key={index} style={styles.historyItem}>
-              $ {item}
-            </Text>
-          ))}
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading...</Text>
         </View>
+      ) : (
+        <ScrollView style={styles.resultsContainer}>
+          {RenderMarkdown}
+          {results.map((result, index) => (
+            <TouchableOpacity
+              key={index}
+              style={styles.resultCard}
+              onPress={() => WebBrowser.openBrowserAsync(result.href)}
+              onLongPress={() => handleLongPress(result.href)}
+            >
+              <View style={styles.resultHeader}>
+                <Text style={styles.resultIndex}>#{index + 1}</Text>
+                <Text style={styles.resultDomain}>
+                  {new URL(result.href).hostname}
+                </Text>
+              </View>
+              <Text style={styles.snippet}>{result.body}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
       )}
 
-      <ScrollView style={styles.resultsContainer}>
-        <Text style={styles.answer}>{displayAnswer}</Text>
-        {results.map((result, index) => (
-          <TouchableOpacity
-            key={index}
-            style={styles.resultCard}
-            onPress={() => Clipboard.setStringAsync(result.href)}
-          >
-            <View style={styles.resultHeader}>
-              <Text style={styles.resultIndex}>#{index + 1}</Text>
-              <Text style={styles.resultDomain}>
-                {new URL(result.href).hostname}
-              </Text>
-            </View>
-            <Text style={styles.snippet}>{result.body}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      <Modal
+        visible={previewVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setPreviewVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalText}>Preview:</Text>
+            <Text style={styles.modalText}>{previewContent}</Text>
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setPreviewVisible(false)}
+            >
+              <Text style={styles.closeButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -122,23 +164,15 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     fontFamily: "Courier New",
   },
-  button: {
-    backgroundColor: "#002200",
-    borderWidth: 1,
-    borderColor: "#00ff88",
-    padding: 14,
-    borderRadius: 4,
-    marginBottom: 16,
+  loadingContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    flex: 1,
   },
-  buttonDisabled: {
-    opacity: 0.5,
-    borderColor: "#00ff8877",
-  },
-  buttonText: {
+  loadingText: {
     color: "#00ff88",
-    textAlign: "center",
-    fontWeight: "bold",
     fontFamily: "Courier New",
+    fontSize: 16,
   },
   resultsContainer: {
     marginTop: 16,
@@ -158,23 +192,10 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     borderWidth: 1,
     borderColor: "#00ff8833",
-  },
-  title: {
-    fontWeight: "bold",
-    color: "#00ffdd",
-    fontFamily: "Courier New",
-    marginBottom: 8,
-  },
-  snippet: {
-    color: "#00ff8877",
-    fontFamily: "Courier New",
-    lineHeight: 16,
-    marginBottom: 8,
-  },
-  url: {
-    color: "#00ffff",
-    fontSize: 12,
-    fontFamily: "Courier New",
+    shadowColor: "#00ff88",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.8,
+    shadowRadius: 3,
   },
   header: {
     borderBottomWidth: 1,
@@ -211,5 +232,40 @@ const styles = StyleSheet.create({
     color: "#00ffff",
     fontFamily: "SpaceMono_400Regular",
     fontSize: 10,
+  },
+  snippet: {
+    color: "#00ff8877",
+    fontFamily: "Courier New",
+    lineHeight: 16,
+    marginBottom: 8,
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.8)",
+  },
+  modalContent: {
+    backgroundColor: "#001100",
+    padding: 20,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#00ff8833",
+  },
+  modalText: {
+    color: "#00ff88",
+    fontFamily: "Courier New",
+    marginBottom: 10,
+  },
+  closeButton: {
+    backgroundColor: "#00ff88",
+    padding: 10,
+    borderRadius: 4,
+    alignItems: "center",
+  },
+  closeButtonText: {
+    color: "#001100",
+    fontFamily: "Courier New",
+    fontWeight: "bold",
   },
 });
