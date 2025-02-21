@@ -1,50 +1,72 @@
-# Welcome to your Expo app 👋
+# React Native Search Summarizer
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+React Native Search Summarizer is a mobile application built with React Native that leverages generative AI models, such as Google's Gemini API, to provide concise summaries of search results. This app enhances user experience by delivering quick and relevant information summaries directly on their mobile devices.
 
-## Get started
+## Features
 
-1. Install dependencies
+- **AI-Powered Summarization**: Utilizes advanced generative AI models to condense extensive search results into brief, informative summaries.
+- **Seamless Integration**: Built with React Native, ensuring compatibility across both iOS and Android platforms.
+- **User-Friendly Interface**: Designed with a focus on simplicity and ease of use, providing users with an intuitive experience.
+
+## Installation
+
+To set up the React Native Search Summarizer on your local machine, follow these steps:
+
+1. **Clone the Repository**:
+
+   ```bash
+   git clone https://github.com/yourusername/react-native-search-summarizer.git
+   cd react-native-search-summarizer
+   ```
+
+2. **Install Dependencies**:
+
+   Ensure you have [Node.js](https://nodejs.org/) installed. Then, install the required packages:
 
    ```bash
    npm install
    ```
 
-2. Start the app
+3. **Set Up Environment Variables**:
 
-   ```bash
-    npx expo start
+   Create a `.env` file in the root directory and add your API keys:
+
+   ```env
+   GEMINI_API_KEY=your_gemini_api_key
    ```
 
-In the output, you'll find options to open the app in a
+   Obtain your Gemini API key from the [Google Gemini API page](https://ai.google.dev/gemini-api).
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+4. **Run the Application**:
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+   For iOS:
 
-## Get a fresh project
+   ```bash
+   npx react-native run-ios
+   ```
 
-When you're ready, run:
+   For Android:
 
-```bash
-npm run reset-project
-```
+   ```bash
+   npx react-native run-android
+   ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
 
-## Learn more
+## Contributing
 
-To learn more about developing your project with Expo, look at the following resources:
+Contributions are welcome! If you have suggestions, feature requests, or want to report a bug, please open an issue or submit a pull request.
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## License
 
-## Join the community
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
-Join our community of developers creating universal apps.
+## Acknowledgments
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- [Google Gemini API](https://ai.google.dev/gemini-api)
+- [React Native](https://reactnative.dev/)
+- [Axios](https://axios-http.com/)
+
+---
+
+By integrating generative AI models like Gemini into a React Native application, the React Native Search Summarizer offers users efficient and concise summaries of search results, enhancing the overall mobile search experience.
+
