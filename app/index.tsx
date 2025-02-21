@@ -24,21 +24,39 @@ import * as WebBrowser from "expo-web-browser";
 import Markdown from "react-native-markdown-display";
 import { useAnimatedReaction, runOnJS } from "react-native-reanimated";
 
+// Define types for state variables
+interface SearchResult {
+  href: string;
+  body: string;
+}
+
 export default function App() {
-  const [query, setQuery] = useState("");
-  const [answer, setAnswer] = useState("");
-  const [results, setResults] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [query, setQuery] = useState<string>("");
+  const [answer, setAnswer] = useState<string>("");
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
   const [history, setHistory] = useState<string[]>([]);
-  const [previewVisible, setPreviewVisible] = useState(false);
-  const [previewContent, setPreviewContent] = useState("");
+  const [previewVisible, setPreviewVisible] = useState<boolean>(false);
+  const [previewContent, setPreviewContent] = useState<string>("");
   const abortController = useRef(new AbortController());
-  const cache = useRef(new Map());
+  const cache = useRef(
+    new Map<
+      string,
+      { answer: string; search_results: SearchResult[]; deep_analysis: boolean }
+    >()
+  );
+  const [enableDeepAnalysis, setEnableDeepAnalysis] = useState(false);
+  const [followUps, setFollowUps] = useState<string[]>([]);
+  const [currentDeepAnalysis, setCurrentDeepAnalysis] = useState(false);
 
   const handleSearch = useCallback(async () => {
     if (cache.current.has(query)) {
-      setAnswer(cache.current.get(query).answer);
-      setResults(cache.current.get(query).search_results);
+      const cachedResponse = cache.current.get(query);
+      if (cachedResponse) {
+        setAnswer(cachedResponse.answer);
+        setResults(cachedResponse.search_results);
+        setCurrentDeepAnalysis(cachedResponse.deep_analysis);
+      }
       return;
     }
 
@@ -46,9 +64,14 @@ export default function App() {
       Keyboard.dismiss();
       abortController.current = new AbortController();
       setLoading(true);
-      const response = await searchQuery(query, abortController.current.signal);
+      const response = await searchQuery(
+        query,
+        abortController.current.signal,
+        enableDeepAnalysis
+      );
       setAnswer(response.answer);
       setResults(response.search_results);
+      setCurrentDeepAnalysis(response.deep_analysis);
       setHistory((prev) => [query, ...prev.slice(0, 4)]);
       cache.current.set(query, response);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -58,23 +81,76 @@ export default function App() {
     } finally {
       setLoading(false);
     }
-  }, [query]);
+  }, [query, enableDeepAnalysis]);
 
   const RenderMarkdown = useMemo(
     () => (
-      <Markdown
-        style={{
-          body: styles.answer,
-          code_inline: { color: "#00ff88", backgroundColor: "#002200" },
-          link: { color: "#00ffff" },
-          paragraph: { marginBottom: 16 },
-        }}
-        onPressLink={(url) => WebBrowser.openBrowserAsync(url)}
-      >
-        {answer}
-      </Markdown>
+      <View style={currentDeepAnalysis ? styles.deepAnalysisContainer : null}>
+        {currentDeepAnalysis && (
+          <Text style={styles.deepAnalysisHeader}>
+            DEEP ANALYSIS REPORT // CYBERSCAN v2.1.7
+          </Text>
+        )}
+        <Markdown
+          style={{
+            ...(currentDeepAnalysis && {
+              body: [styles.answer, { color: "#00ffff" }],
+              heading1: { color: "#ff0044" },
+              code_inline: { backgroundColor: "#00000022" },
+            }),
+            body: styles.answer,
+            code_inline: {
+              color: "#00ff88",
+              backgroundColor: "#002200",
+              padding: 4,
+              borderRadius: 4,
+            },
+            link: {
+              color: "#00ffff",
+              textDecorationLine: "underline",
+            },
+            paragraph: {
+              marginBottom: 16,
+              lineHeight: 20,
+            },
+            heading1: {
+              color: "#00ff88",
+              fontSize: 18,
+              marginVertical: 8,
+              fontFamily: "SpaceMono_400Regular",
+            },
+            heading2: {
+              color: "#00ffff",
+              fontSize: 16,
+              marginVertical: 6,
+              fontFamily: "SpaceMono_400Regular",
+            },
+            list_item: {
+              flexDirection: "row",
+              marginBottom: 8,
+            },
+            bullet_list_icon: {
+              color: "#00ff8877",
+              marginRight: 8,
+            },
+            strong: {
+              color: "#00ff88",
+              fontFamily: "SpaceMono_400Regular",
+            },
+            em: {
+              color: "#00ff8877",
+              fontStyle: "italic",
+            },
+          }}
+          onPressLink={(url) => WebBrowser.openBrowserAsync(url)}
+        >
+          {currentDeepAnalysis
+            ? `> ANALYSIS DEPTH: MAXIMUM\n${answer}`
+            : answer}
+        </Markdown>
+      </View>
     ),
-    [answer]
+    [answer, currentDeepAnalysis]
   );
 
   const handleLongPress = (url: string) => {
@@ -82,10 +158,57 @@ export default function App() {
     setPreviewVisible(true);
   };
 
+  const copyToClipboard = useCallback(() => {
+    Clipboard.setString(answer);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  }, [answer]);
+
+  const handleRefine = (type: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const modifiers = {
+      simplify: "Simplify this for non-experts: ",
+      expand: "Provide detailed analysis of: ",
+      technical: "Give technical breakdown of: ",
+    };
+    setQuery(`${modifiers[type as keyof typeof modifiers]}${query}`);
+  };
+
+  useEffect(() => {
+    if (answer) {
+      const generatedFollowUps = generateFollowUps(answer);
+      setFollowUps(generatedFollowUps);
+    }
+  }, [answer]);
+
+  const generateFollowUps = (answer: string) => {
+    const questions = [
+      "What are the key components of this?",
+      "How does this compare to similar systems?",
+      "What are the potential security implications?",
+    ];
+    return questions.slice(0, 2 + Math.floor(Math.random() * 2));
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerText}>SENTINO://ROOT_ACCESS</Text>
+        <TouchableOpacity
+          style={styles.deepAnalysisToggle}
+          onPress={() => setEnableDeepAnalysis(!enableDeepAnalysis)}
+        >
+          <Text style={styles.deepAnalysisText}>
+            {enableDeepAnalysis
+              ? "DEEP ANALYSIS: ONLINE"
+              : "DEEP ANALYSIS: OFFLINE"}
+          </Text>
+          <View
+            style={[
+              styles.toggleIndicator,
+              enableDeepAnalysis && styles.toggleActive,
+            ]}
+          />
+        </TouchableOpacity>
       </View>
 
       <TextInput
@@ -99,6 +222,36 @@ export default function App() {
         returnKeyType="search"
       />
 
+      {followUps.length > 0 && (
+        <View style={styles.followUpContainer}>
+          <Text style={styles.followUpTitle}>CONTEXTUAL FOLLOW-UPS:</Text>
+          {followUps.map((question, index) => (
+            <TouchableOpacity
+              key={index}
+              style={styles.followUpButton}
+              onPress={() => {
+                setQuery(question);
+                handleSearch();
+              }}
+            >
+              <Text style={styles.followUpText}>{question}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+
+      <View style={styles.refinementContainer}>
+        {["Simplify", "Expand", "Technical"].map((type) => (
+          <TouchableOpacity
+            key={type}
+            style={styles.refinementButton}
+            onPress={() => handleRefine(type.toLowerCase())}
+          >
+            <Text style={styles.refinementText}>REFINE: {type}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
       {loading ? (
         <View style={styles.loadingContainer}>
           <Text style={styles.loadingText}>Loading...</Text>
@@ -106,6 +259,9 @@ export default function App() {
       ) : (
         <ScrollView style={styles.resultsContainer}>
           {RenderMarkdown}
+          <TouchableOpacity style={styles.copyButton} onPress={copyToClipboard}>
+            <Text style={styles.copyButtonText}>Copy Answer</Text>
+          </TouchableOpacity>
           {results.map((result, index) => (
             <TouchableOpacity
               key={index}
@@ -267,5 +423,98 @@ const styles = StyleSheet.create({
     color: "#001100",
     fontFamily: "Courier New",
     fontWeight: "bold",
+  },
+  copyButton: {
+    backgroundColor: "#00ff88",
+    padding: 10,
+    borderRadius: 4,
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  copyButtonText: {
+    color: "#001100",
+    fontFamily: "Courier New",
+    fontWeight: "bold",
+  },
+  deepAnalysisToggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 8,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: "#00ff8833",
+    borderRadius: 4,
+  },
+  deepAnalysisText: {
+    color: "#00ff88",
+    fontFamily: "SpaceMono_400Regular",
+    fontSize: 10,
+  },
+  toggleIndicator: {
+    width: 12,
+    height: 12,
+    marginLeft: 8,
+    borderRadius: 6,
+    backgroundColor: "#ff0044",
+  },
+  toggleActive: {
+    backgroundColor: "#00ff88",
+    shadowColor: "#00ff88",
+    shadowRadius: 4,
+  },
+  refinementContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 16,
+  },
+  refinementButton: {
+    borderWidth: 1,
+    borderColor: "#00ff8833",
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+  },
+  refinementText: {
+    color: "#00ff88",
+    fontFamily: "SpaceMono_400Regular",
+    fontSize: 10,
+  },
+  followUpContainer: {
+    borderWidth: 1,
+    borderColor: "#00ff8822",
+    padding: 12,
+    marginBottom: 16,
+  },
+  followUpTitle: {
+    color: "#00ffff",
+    fontFamily: "SpaceMono_400Regular",
+    fontSize: 10,
+    marginBottom: 8,
+  },
+  followUpButton: {
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#00ff8811",
+  },
+  followUpText: {
+    color: "#00ff8877",
+    fontFamily: "Courier New",
+    fontSize: 12,
+  },
+  deepAnalysisContainer: {
+    borderLeftWidth: 3,
+    borderLeftColor: "#00ff88",
+    paddingLeft: 12,
+    marginBottom: 20,
+  },
+  deepAnalysisHeader: {
+    color: "#00ff88",
+    fontFamily: "SpaceMono_400Regular",
+    fontSize: 10,
+    marginBottom: 8,
+    textShadowColor: "#00ff8877",
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 10,
   },
 });
