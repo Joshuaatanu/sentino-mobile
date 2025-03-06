@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'https://2b0b-109-175-154-194.ngrok-free.app/api/query';
+const API_URL = 'https://search-ai-beta.onrender.com/api/query';
 const REQUEST_TIMEOUT = 20000;
 
 interface SearchResult {

@@ -23,6 +23,7 @@ import { useFonts, SpaceMono_400Regular } from "@expo-google-fonts/space-mono";
 import * as WebBrowser from "expo-web-browser";
 import Markdown from "react-native-markdown-display";
 import { useAnimatedReaction, runOnJS } from "react-native-reanimated";
+import { Link } from "expo-router";
 
 // Define types for state variables
 interface SearchResult {
@@ -175,18 +176,44 @@ export default function App() {
 
   useEffect(() => {
     if (answer) {
-      const generatedFollowUps = generateFollowUps(answer);
+      const generatedFollowUps = generateFollowUps(query);
       setFollowUps(generatedFollowUps);
     }
-  }, [answer]);
+  }, [answer, query]);
 
-  const generateFollowUps = (answer: string) => {
-    const questions = [
-      "What are the key components of this?",
-      "How does this compare to similar systems?",
-      "What are the potential security implications?",
+  const generateFollowUps = (query: string) => {
+    const questionTemplates = [
+      "What are the security implications of $?",
+      "How does $ compare to similar concepts?",
+      "What are the key components required for $?",
+      "Explain the technical implementation of $",
+      "What are alternative approaches to $?",
+      "What standards govern $ implementation?",
+      "How would you troubleshoot issues with $?",
+      "What are the performance considerations for $?",
     ];
-    return questions.slice(0, 2 + Math.floor(Math.random() * 2));
+
+    // Extract key terms from query
+    const keywords = query
+      .replace(/[^a-zA-Z0-9 ]/g, "")
+      .split(" ")
+      .filter(
+        (word) =>
+          word.length > 3 &&
+          !["what", "how", "why", "explain", "describe"].includes(
+            word.toLowerCase()
+          )
+      )
+      .slice(0, 3);
+
+    return questionTemplates
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 3 + Math.floor(Math.random() * 2))
+      .map((q) => {
+        const replacement =
+          keywords.length > 0 ? keywords.join(" ") : "this concept";
+        return q.replace("$", replacement);
+      });
   };
 
   return (
@@ -211,16 +238,25 @@ export default function App() {
         </TouchableOpacity>
       </View>
 
-      <TextInput
-        style={styles.input}
-        value={query}
-        onChangeText={setQuery}
-        placeholder="Enter your question..."
-        placeholderTextColor="#00ff8877"
-        keyboardAppearance="dark"
-        onSubmitEditing={handleSearch}
-        returnKeyType="search"
-      />
+      <View style={styles.searchContainer}>
+        <TextInput
+          style={styles.input}
+          value={query}
+          onChangeText={setQuery}
+          placeholder="Enter your question..."
+          placeholderTextColor="#00ff8877"
+          keyboardAppearance="dark"
+          onSubmitEditing={handleSearch}
+          returnKeyType="search"
+        />
+        <TouchableOpacity
+          style={styles.searchButton}
+          onPress={handleSearch}
+          disabled={loading}
+        >
+          <Text style={styles.searchButtonText}>SEARCH</Text>
+        </TouchableOpacity>
+      </View>
 
       {followUps.length > 0 && (
         <View style={styles.followUpContainer}>
@@ -300,6 +336,17 @@ export default function App() {
           </View>
         </View>
       </Modal>
+
+      <TouchableOpacity
+        style={styles.chatButton}
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        }}
+      >
+        <Link href="/chat" style={styles.chatButtonText}>
+          INITIATE CHAT PROTOCOL
+        </Link>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -314,11 +361,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#00ff8877",
     padding: 12,
-    marginBottom: 16,
     color: "#00ff88",
     backgroundColor: "#001100",
     borderRadius: 4,
     fontFamily: "Courier New",
+    flex: 1,
   },
   loadingContainer: {
     alignItems: "center",
@@ -516,5 +563,35 @@ const styles = StyleSheet.create({
     textShadowColor: "#00ff8877",
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 10,
+  },
+  searchContainer: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 16,
+  },
+  searchButton: {
+    backgroundColor: "#00ff88",
+    borderRadius: 4,
+    justifyContent: "center",
+    paddingHorizontal: 16,
+  },
+  searchButtonText: {
+    color: "#001100",
+    fontFamily: "SpaceMono_400Regular",
+    fontWeight: "bold",
+    fontSize: 12,
+  },
+  chatButton: {
+    borderWidth: 1,
+    borderColor: "#00ffff",
+    padding: 12,
+    marginTop: 16,
+    alignItems: "center",
+  },
+  chatButtonText: {
+    color: "#00ffff",
+    fontFamily: "SpaceMono_400Regular",
+    fontSize: 12,
+    fontWeight: "bold",
   },
 });
