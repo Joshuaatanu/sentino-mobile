@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Keyboard } from 'react-native';
+import axios from 'axios';
 import { Link } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { SpaceMono_400Regular } from '@expo-google-fonts/space-mono';
+import Markdown from 'react-native-markdown-display';
 
 interface Message {
   id: string;
@@ -32,16 +34,41 @@ export default function ChatPage() {
     setInputText('');
     setLoading(true);
 
-    // Simulate bot response
-    setTimeout(() => {
-      const botResponse: Message = {
+    try {
+      // Construct the payload
+      const payload = {
+        messages: [
+          ...messages.map(msg => ({
+            role: msg.isUser ? 'user' : 'assistant',
+            content: msg.text,
+          })),
+          { role: 'user', content: inputText }
+        ],
+        context: 'You are cybertron and you are generate purpose chatbot', // Adjust context as needed
+      };
+
+      const response = await axios.post('https://search-ai-beta.onrender.com/api/chat', payload);
+
+      const chatResponse = response.data.response;
+
+      const botMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: `> RESPONSE PROTOCOL INITIATED\n${inputText.toUpperCase()} ANALYSIS IN PROGRESS...`,
+        text: chatResponse,
         isUser: false,
       };
-      setMessages(prev => [...prev, botResponse]);
+
+      setMessages(prev => [...prev, botMessage]);
+    } catch (error) {
+      console.error('Error communicating with chat API:', error);
+      const errorMessage: Message = {
+        id: (Date.now() + 2).toString(),
+        text: '> ERROR: Unable to reach chat server.',
+        isUser: false,
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
       setLoading(false);
-    }, 1500);
+    }
   };
 
   return (
@@ -65,9 +92,15 @@ export default function ChatPage() {
               message.isUser ? styles.userBubble : styles.botBubble
             ]}
           >
-            <Text style={styles.messageText}>
-              {message.text}
-            </Text>
+            {message.isUser ? (
+              <Text style={styles.messageText}>
+                {message.text}
+              </Text>
+            ) : (
+              <Markdown style={styles.markdown}>
+                {message.text}
+              </Markdown>
+            )}
           </View>
         ))}
         {loading && (
@@ -195,5 +228,16 @@ const styles = StyleSheet.create({
     fontFamily: 'SpaceMono_400Regular',
     fontWeight: 'bold',
     fontSize: 12,
+  },
+  markdown: {
+    body: {
+      color: '#00ff88',
+      fontFamily: 'SpaceMono_400Regular',
+      fontSize: 12,
+    },
+    link: {
+      color: '#00ffff',
+      textDecorationLine: 'underline',
+    },
   },
 }); 
