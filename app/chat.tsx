@@ -84,7 +84,7 @@ export default function ChatPage() {
       };
 
       const response = await axios.post(
-        "https://b5a0-109-175-154-194.ngrok-free.app/api/chat",
+        "https://search-ai-beta.onrender.com/api/chat",
         payload
       );
 
@@ -122,28 +122,31 @@ export default function ChatPage() {
       <View style={styles.featureToggles}>
         <TouchableOpacity
           onPress={() => setDeepAnalysisEnabled(!deepAnalysisEnabled)}
+          style={styles.toggleButton}
         >
-          <Text
-            style={[
-              styles.toggleText,
-              deepAnalysisEnabled && styles.toggleActive,
-            ]}
-          >
-            {deepAnalysisEnabled
-              ? "> DEEP ANALYSIS [ON]"
-              : "> DEEP ANALYSIS [OFF]"}
+          <Text style={styles.toggleText}>
+            {deepAnalysisEnabled ? " DEEP ANALYSIS " : " DEEP ANALYSIS "}
           </Text>
+          <View
+            style={[
+              styles.toggleIndicator,
+              deepAnalysisEnabled ? styles.toggleActive : styles.toggleInactive,
+            ]}
+          />
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => setUseSearchEnabled(!useSearchEnabled)}
+          style={styles.toggleButton}
         >
-          <Text
-            style={[styles.toggleText, useSearchEnabled && styles.toggleActive]}
-          >
-            {useSearchEnabled
-              ? "> SEARCH RESULTS [ON]"
-              : "> SEARCH RESULTS [OFF]"}
+          <Text style={styles.toggleText}>
+            {useSearchEnabled ? " SEARCH RESULTS " : " SEARCH RESULTS "}
           </Text>
+          <View
+            style={[
+              styles.toggleIndicator,
+              useSearchEnabled ? styles.toggleActive : styles.toggleInactive,
+            ]}
+          />
         </TouchableOpacity>
       </View>
 
@@ -299,19 +302,33 @@ const styles = StyleSheet.create({
     justifyContent: "space-around",
     marginBottom: 10,
   },
+  toggleButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: "#00ff8833",
+    borderRadius: 4,
+    marginBottom: 10,
+  },
   toggleText: {
     color: "#00ffff",
     fontFamily: "SpaceMono_400Regular",
     fontSize: 12,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderWidth: 1,
-    borderColor: "#00ffff33",
-    borderRadius: 4,
+    marginRight: 8,
+  },
+  toggleIndicator: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: "#ff0044",
   },
   toggleActive: {
-    backgroundColor: "#001100", // Highlight when active
-    borderColor: "#00ffff",
+    backgroundColor: "#00ff88",
+  },
+  toggleInactive: {
+    backgroundColor: "#ff0044",
   },
   markdown: {
     body: {

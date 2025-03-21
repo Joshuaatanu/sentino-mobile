@@ -47,8 +47,16 @@ export default function App() {
     >()
   );
   const [enableDeepAnalysis, setEnableDeepAnalysis] = useState(false);
-  const [followUps, setFollowUps] = useState<string[]>([]);
   const [currentDeepAnalysis, setCurrentDeepAnalysis] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState<string>("");
+
+  const loadingMessages = [
+    "Connecting to the matrix...",
+    "Decrypting the mainframe...",
+    "Compiling data streams...",
+    "Synchronizing with the server...",
+    "Analyzing quantum fields...",
+  ];
 
   const handleSearch = useCallback(async () => {
     if (cache.current.has(query)) {
@@ -65,6 +73,9 @@ export default function App() {
       Keyboard.dismiss();
       abortController.current = new AbortController();
       setLoading(true);
+      setLoadingMessage(
+        loadingMessages[Math.floor(Math.random() * loadingMessages.length)]
+      );
       const response = await searchQuery(
         query,
         abortController.current.signal,
@@ -174,48 +185,6 @@ export default function App() {
     setQuery(`${modifiers[type as keyof typeof modifiers]}${query}`);
   };
 
-  useEffect(() => {
-    if (answer) {
-      const generatedFollowUps = generateFollowUps(query);
-      setFollowUps(generatedFollowUps);
-    }
-  }, [answer, query]);
-
-  const generateFollowUps = (query: string) => {
-    const questionTemplates = [
-      "What are the security implications of $?",
-      "How does $ compare to similar concepts?",
-      "What are the key components required for $?",
-      "Explain the technical implementation of $",
-      "What are alternative approaches to $?",
-      "What standards govern $ implementation?",
-      "How would you troubleshoot issues with $?",
-      "What are the performance considerations for $?",
-    ];
-
-    // Extract key terms from query
-    const keywords = query
-      .replace(/[^a-zA-Z0-9 ]/g, "")
-      .split(" ")
-      .filter(
-        (word) =>
-          word.length > 3 &&
-          !["what", "how", "why", "explain", "describe"].includes(
-            word.toLowerCase()
-          )
-      )
-      .slice(0, 3);
-
-    return questionTemplates
-      .sort(() => Math.random() - 0.5)
-      .slice(0, 3 + Math.floor(Math.random() * 2))
-      .map((q) => {
-        const replacement =
-          keywords.length > 0 ? keywords.join(" ") : "this concept";
-        return q.replace("$", replacement);
-      });
-  };
-
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -258,24 +227,6 @@ export default function App() {
         </TouchableOpacity>
       </View>
 
-      {followUps.length > 0 && (
-        <View style={styles.followUpContainer}>
-          <Text style={styles.followUpTitle}>CONTEXTUAL FOLLOW-UPS:</Text>
-          {followUps.map((question, index) => (
-            <TouchableOpacity
-              key={index}
-              style={styles.followUpButton}
-              onPress={() => {
-                setQuery(question);
-                handleSearch();
-              }}
-            >
-              <Text style={styles.followUpText}>{question}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      )}
-
       <View style={styles.refinementContainer}>
         {["Simplify", "Expand", "Technical"].map((type) => (
           <TouchableOpacity
@@ -290,7 +241,8 @@ export default function App() {
 
       {loading ? (
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading...</Text>
+          <ActivityIndicator size="large" color="#00ff88" />
+          <Text style={styles.loadingText}>{loadingMessage}</Text>
         </View>
       ) : (
         <ScrollView style={styles.resultsContainer}>
@@ -317,6 +269,17 @@ export default function App() {
         </ScrollView>
       )}
 
+      <TouchableOpacity
+        style={styles.chatButton}
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        }}
+      >
+        <Link href="/chat" style={styles.chatButtonText}>
+          INITIATE CHAT PROTOCOL
+        </Link>
+      </TouchableOpacity>
+
       <Modal
         visible={previewVisible}
         transparent={true}
@@ -336,17 +299,6 @@ export default function App() {
           </View>
         </View>
       </Modal>
-
-      <TouchableOpacity
-        style={styles.chatButton}
-        onPress={() => {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        }}
-      >
-        <Link href="/chat" style={styles.chatButtonText}>
-          INITIATE CHAT PROTOCOL
-        </Link>
-      </TouchableOpacity>
     </View>
   );
 }
@@ -527,43 +479,6 @@ const styles = StyleSheet.create({
     fontFamily: "SpaceMono_400Regular",
     fontSize: 10,
   },
-  followUpContainer: {
-    borderWidth: 1,
-    borderColor: "#00ff8822",
-    padding: 12,
-    marginBottom: 16,
-  },
-  followUpTitle: {
-    color: "#00ffff",
-    fontFamily: "SpaceMono_400Regular",
-    fontSize: 10,
-    marginBottom: 8,
-  },
-  followUpButton: {
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: "#00ff8811",
-  },
-  followUpText: {
-    color: "#00ff8877",
-    fontFamily: "Courier New",
-    fontSize: 12,
-  },
-  deepAnalysisContainer: {
-    borderLeftWidth: 3,
-    borderLeftColor: "#00ff88",
-    paddingLeft: 12,
-    marginBottom: 20,
-  },
-  deepAnalysisHeader: {
-    color: "#00ff88",
-    fontFamily: "SpaceMono_400Regular",
-    fontSize: 10,
-    marginBottom: 8,
-    textShadowColor: "#00ff8877",
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 10,
-  },
   searchContainer: {
     flexDirection: "row",
     gap: 8,
@@ -593,5 +508,20 @@ const styles = StyleSheet.create({
     fontFamily: "SpaceMono_400Regular",
     fontSize: 12,
     fontWeight: "bold",
+  },
+  deepAnalysisContainer: {
+    borderLeftWidth: 3,
+    borderLeftColor: "#00ff88",
+    paddingLeft: 12,
+    marginBottom: 20,
+  },
+  deepAnalysisHeader: {
+    color: "#00ff88",
+    fontFamily: "SpaceMono_400Regular",
+    fontSize: 10,
+    marginBottom: 8,
+    textShadowColor: "#00ff8877",
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 10,
   },
 });
