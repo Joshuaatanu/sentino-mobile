@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -8,6 +8,8 @@ import {
   StyleSheet,
   Keyboard,
   ActivityIndicator,
+  Platform,
+  SafeAreaView,
 } from "react-native";
 import axios from "axios";
 import { Link } from "expo-router";
@@ -36,6 +38,8 @@ export default function ChatPage() {
     "Engaging neural networks...",
     "Synthesizing information...",
   ];
+
+  const scrollViewRef = useRef<ScrollView>(null);
 
   useEffect(() => {
     if (loading) {
@@ -111,10 +115,10 @@ export default function ChatPage() {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Link href="/" style={styles.backButton}>
-          <Text style={styles.backButtonText}> BACKCHANNEL</Text>
+          <Text style={styles.backButtonText}>← BACKCHANNEL</Text>
         </Link>
         <Text style={styles.title}>CHAT//PROTOCOL v2.1.7</Text>
       </View>
@@ -151,8 +155,17 @@ export default function ChatPage() {
       </View>
 
       <ScrollView
+        ref={scrollViewRef}
         style={styles.chatContainer}
         contentContainerStyle={styles.chatContent}
+        keyboardDismissMode="on-drag"
+        maintainVisibleContentPosition={{
+          minHeight: 44,
+          autoscrollToTopThreshold: 100
+        }}
+        onContentSizeChange={() => 
+          scrollViewRef.current?.scrollToEnd({ animated: true })
+        }
       >
         {messages.map((message) => (
           <View
@@ -160,6 +173,18 @@ export default function ChatPage() {
             style={[
               styles.messageBubble,
               message.isUser ? styles.userBubble : styles.botBubble,
+              {
+                backgroundColor: Platform.select({
+                  ios: '#000000',
+                  default: '#001100'
+                }),
+              },
+              {
+                shadowColor: '#00ff88',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.25,
+                shadowRadius: 2,
+              },
             ]}
           >
             {message.isUser ? (
@@ -195,7 +220,7 @@ export default function ChatPage() {
           <Text style={styles.sendButtonText}>SEND</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -203,22 +228,25 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#000",
-    padding: 16,
   },
   header: {
-    borderBottomWidth: 1,
+    borderBottomWidth: Platform.OS === 'ios' ? 0.5 : 1,
     borderBottomColor: "#00ff8822",
+    paddingHorizontal: 16,
     paddingBottom: 12,
+    paddingTop: Platform.OS === 'ios' ? 8 : 12,
     marginBottom: 16,
+    backgroundColor: Platform.OS === 'ios' ? '#000000' : 'transparent',
   },
   backButton: {
     alignSelf: "flex-start",
     marginBottom: 8,
+    padding: Platform.OS === 'ios' ? 4 : 0,
   },
   backButtonText: {
     color: "#00ff88",
     fontFamily: "SpaceMono_400Regular",
-    fontSize: 12,
+    fontSize: Platform.OS === 'ios' ? 16 : 12,
   },
   title: {
     color: "#00ffff",
@@ -229,14 +257,15 @@ const styles = StyleSheet.create({
   chatContainer: {
     flex: 1,
     marginBottom: 16,
+    paddingHorizontal: 16,
   },
   chatContent: {
     paddingBottom: 16,
   },
   messageBubble: {
     maxWidth: "80%",
-    padding: 12,
-    borderRadius: 8,
+    padding: Platform.OS === 'ios' ? 10 : 12,
+    borderRadius: Platform.OS === 'ios' ? 16 : 8,
     marginBottom: 8,
   },
   userBubble: {
@@ -259,11 +288,12 @@ const styles = StyleSheet.create({
   },
   loadingBubble: {
     alignSelf: "flex-start",
-    padding: 8,
-    borderLeftWidth: 3,
+    padding: Platform.OS === 'ios' ? 10 : 8,
+    borderLeftWidth: Platform.OS === 'ios' ? 2 : 3,
     borderLeftColor: "#00ffff",
     flexDirection: "row",
     alignItems: "center",
+    marginLeft: 16,
   },
   loadingText: {
     color: "#00ffff",
@@ -274,42 +304,52 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: "row",
     gap: 8,
+    paddingHorizontal: 16,
+    paddingBottom: Platform.OS === 'ios' ? 30 : 16,
+    borderTopWidth: Platform.OS === 'ios' ? 0.5 : 0,
+    borderTopColor: "#00ff8822",
+    backgroundColor: "#000",
   },
   input: {
     flex: 1,
-    borderWidth: 1,
+    borderWidth: Platform.OS === 'ios' ? 0.5 : 1,
     borderColor: "#00ff8877",
     padding: 12,
+    paddingTop: Platform.OS === 'ios' ? 12 : 8,
+    paddingBottom: Platform.OS === 'ios' ? 12 : 8,
     color: "#00ff88",
     backgroundColor: "#001100",
-    borderRadius: 4,
+    borderRadius: Platform.OS === 'ios' ? 8 : 4,
     fontFamily: "SpaceMono_400Regular",
+    fontSize: Platform.OS === 'ios' ? 16 : 14,
   },
   sendButton: {
     backgroundColor: "#00ff88",
-    borderRadius: 4,
+    borderRadius: Platform.OS === 'ios' ? 8 : 4,
     justifyContent: "center",
-    paddingHorizontal: 16,
+    paddingHorizontal: Platform.OS === 'ios' ? 20 : 16,
+    height: Platform.OS === 'ios' ? 44 : 40,
   },
   sendButtonText: {
     color: "#001100",
     fontFamily: "SpaceMono_400Regular",
     fontWeight: "bold",
-    fontSize: 12,
+    fontSize: Platform.OS === 'ios' ? 16 : 12,
   },
   featureToggles: {
     flexDirection: "row",
     justifyContent: "space-around",
     marginBottom: 10,
+    paddingHorizontal: 16,
   },
   toggleButton: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderWidth: 1,
+    paddingVertical: Platform.OS === 'ios' ? 10 : 8,
+    paddingHorizontal: Platform.OS === 'ios' ? 16 : 12,
+    borderWidth: Platform.OS === 'ios' ? 0.5 : 1,
     borderColor: "#00ff8833",
-    borderRadius: 4,
+    borderRadius: Platform.OS === 'ios' ? 8 : 4,
     marginBottom: 10,
   },
   toggleText: {
